@@ -9,6 +9,28 @@ find_package(OpenCV REQUIRED )
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(.)
 
+
+# Detect CUDA architecture
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    # Try to detect GPU compute capability
+    execute_process(
+        COMMAND nvidia-smi --query-gpu=compute_cap --format=csv,noheader
+        OUTPUT_VARIABLE GPU_COMPUTE_CAP
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    
+    if(GPU_COMPUTE_CAP)
+        string(REPLACE "." "" GPU_ARCH "${GPU_COMPUTE_CAP}")
+        message(STATUS "Detected GPU compute capability: ${GPU_COMPUTE_CAP} (sm_${GPU_ARCH})")
+        set(CMAKE_CUDA_ARCHITECTURES ${GPU_ARCH})
+    else()
+        # Fallback to RTX 5080 default
+        message(STATUS "Could not detect GPU, using sm_100 (RTX 50 series)")
+        set(CMAKE_CUDA_ARCHITECTURES 100)
+    endif()
+endif()
+
 set(CUDA_NVCC_FLAGS 
     ${CUDA_NVCC_FLAGS}
     -O3 
@@ -16,9 +38,9 @@ set(CUDA_NVCC_FLAGS
     --maxrregcount=128 
     --ptxas-options=-v 
     -std=c++11 
-    --compiler-options -Wall 
-    -gencode arch=compute_86,code=sm_86      # Ampere (3050/3060/3070)
+    --compiler-options -Wall
 )
+
 
 # set(CUDA_NVCC_FLAGS
 #     ${CUDA_NVCC_FLAGS};
